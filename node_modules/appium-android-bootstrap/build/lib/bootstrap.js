@@ -1,0 +1,378 @@
+'use strict';
+
+var _createClass = require('babel-runtime/helpers/create-class')['default'];
+
+var _classCallCheck = require('babel-runtime/helpers/class-call-check')['default'];
+
+var _regeneratorRuntime = require('babel-runtime/regenerator')['default'];
+
+var _getIterator = require('babel-runtime/core-js/get-iterator')['default'];
+
+var _Promise = require('babel-runtime/core-js/promise')['default'];
+
+var _Object$assign = require('babel-runtime/core-js/object/assign')['default'];
+
+var _interopRequireDefault = require('babel-runtime/helpers/interop-require-default')['default'];
+
+Object.defineProperty(exports, '__esModule', {
+  value: true
+});
+
+var _appiumUiautomator = require('appium-uiautomator');
+
+var _appiumUiautomator2 = _interopRequireDefault(_appiumUiautomator);
+
+var _net = require('net');
+
+var _net2 = _interopRequireDefault(_net);
+
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
+var _lodash = require('lodash');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+var _appiumBaseDriver = require('appium-base-driver');
+
+var _bluebird = require('bluebird');
+
+var _bluebird2 = _interopRequireDefault(_bluebird);
+
+var _appiumSupport = require('appium-support');
+
+var log = _appiumSupport.logger.getLogger('AndroidBootstrap');
+var COMMAND_TYPES = {
+  ACTION: 'action',
+  SHUTDOWN: 'shutdown'
+};
+
+var AndroidBootstrap = (function () {
+  function AndroidBootstrap(adb) {
+    var systemPort = arguments.length <= 1 || arguments[1] === undefined ? 4724 : arguments[1];
+    var webSocket = arguments.length <= 2 || arguments[2] === undefined ? undefined : arguments[2];
+
+    _classCallCheck(this, AndroidBootstrap);
+
+    this.adb = adb;
+    this.systemPort = systemPort;
+    this.webSocket = webSocket;
+    this.onUnexpectedShutdown = new _bluebird2['default'](function () {}).cancellable();
+    this.ignoreUnexpectedShutdown = false;
+  }
+
+  _createClass(AndroidBootstrap, [{
+    key: 'start',
+    value: function start(appPackage) {
+      var disableAndroidWatchers = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+      var acceptSslCerts = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
+      var rootDir, startDetector, bootstrapJar;
+      return _regeneratorRuntime.async(function start$(context$2$0) {
+        var _this = this;
+
+        while (1) switch (context$2$0.prev = context$2$0.next) {
+          case 0:
+            context$2$0.prev = 0;
+            rootDir = _path2['default'].resolve(__dirname, '..', '..');
+
+            startDetector = function startDetector(s) {
+              return (/Appium Socket Server Ready/.test(s)
+              );
+            };
+
+            bootstrapJar = _path2['default'].resolve(rootDir, 'bootstrap', 'bin', 'AppiumBootstrap.jar');
+            context$2$0.next = 6;
+            return _regeneratorRuntime.awrap(this.init());
+
+          case 6:
+            this.adb.forwardPort(this.systemPort, 4724);
+            context$2$0.next = 9;
+            return _regeneratorRuntime.awrap(this.uiAutomator.start(bootstrapJar, 'io.appium.android.bootstrap.Bootstrap', startDetector, '-e', 'pkg', appPackage, '-e', 'disableAndroidWatchers', disableAndroidWatchers, '-e', 'acceptSslCerts', acceptSslCerts));
+
+          case 9:
+            this.process = context$2$0.sent;
+
+            // process the output
+            this.process.on('output', function (stdout, stderr) {
+              var alertRe = /Emitting system alert message/;
+              if (alertRe.test(stdout)) {
+                log.debug("Emitting alert message...");
+                if (_this.webSocket) {
+                  _this.webSocket.sockets.emit('alert', { message: stdout });
+                }
+              }
+
+              // the bootstrap logger wraps its own log lines with
+              // [APPIUM-UIAUTO] ... [APPIUM-UIAUTO]
+              // and leaves actual UiAutomator logs as they are
+              var stdoutLines = (stdout || "").split("\n");
+              var uiautoLog = /\[APPIUM-UIAUTO\](.+)\[\/APPIUM-UIAUTO\]/;
+              var _iteratorNormalCompletion = true;
+              var _didIteratorError = false;
+              var _iteratorError = undefined;
+
+              try {
+                for (var _iterator = _getIterator(stdoutLines), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+                  var line = _step.value;
+
+                  if (line.trim()) {
+                    if (uiautoLog.test(line)) {
+                      var innerLine = uiautoLog.exec(line)[1].trim();
+                      var logMethod = log.info.bind(log);
+                      // if the bootstrap log considers something debug, log that as
+                      // debug and not info
+                      if (/\[debug\]/.test(innerLine)) {
+                        logMethod = log.debug.bind(log);
+                      }
+                      logMethod('[BOOTSTRAP LOG] ' + innerLine);
+                    } else {
+                      log.debug('[UIAUTO STDOUT] ' + line);
+                    }
+                  }
+                }
+              } catch (err) {
+                _didIteratorError = true;
+                _iteratorError = err;
+              } finally {
+                try {
+                  if (!_iteratorNormalCompletion && _iterator['return']) {
+                    _iterator['return']();
+                  }
+                } finally {
+                  if (_didIteratorError) {
+                    throw _iteratorError;
+                  }
+                }
+              }
+
+              var stderrLines = (stderr || "").split("\n");
+              var _iteratorNormalCompletion2 = true;
+              var _didIteratorError2 = false;
+              var _iteratorError2 = undefined;
+
+              try {
+                for (var _iterator2 = _getIterator(stderrLines), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                  var line = _step2.value;
+
+                  if (line.trim()) {
+                    log.debug('[UIAUTO STDERR] ' + line);
+                  }
+                }
+              } catch (err) {
+                _didIteratorError2 = true;
+                _iteratorError2 = err;
+              } finally {
+                try {
+                  if (!_iteratorNormalCompletion2 && _iterator2['return']) {
+                    _iterator2['return']();
+                  }
+                } finally {
+                  if (_didIteratorError2) {
+                    throw _iteratorError2;
+                  }
+                }
+              }
+            });
+
+            // only return when the socket client has connected
+            context$2$0.next = 13;
+            return _regeneratorRuntime.awrap(new _Promise(function (resolve, reject) {
+              try {
+                _this.socketClient = _net2['default'].connect(_this.systemPort);
+                // Windows: the socket errors out when ADB restarts. Let's catch it to avoid crashing.
+                _this.socketClient.on('error', function (err) {
+                  if (!_this.ignoreUnexpectedShutdown) {
+                    throw new Error('Android bootstrap socket crashed: ' + err);
+                  }
+                });
+                _this.socketClient.once('connect', function () {
+                  log.info("Android bootstrap socket is now connected");
+                  resolve();
+                });
+              } catch (err) {
+                reject(err);
+              }
+            }));
+
+          case 13:
+            return context$2$0.abrupt('return', context$2$0.sent);
+
+          case 16:
+            context$2$0.prev = 16;
+            context$2$0.t0 = context$2$0['catch'](0);
+
+            log.errorAndThrow('Error occured while starting AndroidBootstrap. Original error: ' + context$2$0.t0);
+
+          case 19:
+          case 'end':
+            return context$2$0.stop();
+        }
+      }, null, this, [[0, 16]]);
+    }
+  }, {
+    key: 'sendCommand',
+    value: function sendCommand(type) {
+      var extra = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+      return _regeneratorRuntime.async(function sendCommand$(context$2$0) {
+        var _this2 = this;
+
+        while (1) switch (context$2$0.prev = context$2$0.next) {
+          case 0:
+            if (this.socketClient) {
+              context$2$0.next = 2;
+              break;
+            }
+
+            throw new Error('Socket connection closed unexpectedly');
+
+          case 2:
+            context$2$0.next = 4;
+            return _regeneratorRuntime.awrap(new _Promise(function (resolve, reject) {
+              var cmd = _Object$assign({ cmd: type }, extra);
+              var cmdJson = JSON.stringify(cmd) + ' \n';
+              log.debug('Sending command to android: ' + _lodash2['default'].trunc(cmdJson, 1000).trim());
+              _this2.socketClient.write(cmdJson);
+              _this2.socketClient.setEncoding('utf8');
+              var streamData = '';
+              _this2.socketClient.on('data', function (data) {
+                log.debug("Received command result from bootstrap");
+                try {
+                  streamData = JSON.parse(streamData + data);
+                  // we successfully parsed JSON so we've got all the data,
+                  // remove the socket listener and evaluate
+                  _this2.socketClient.removeAllListeners('data');
+                  if (streamData.status === 0) {
+                    resolve(streamData.value);
+                  }
+                  reject((0, _appiumBaseDriver.errorFromCode)(streamData.status));
+                } catch (ign) {
+                  log.debug("Stream still not complete, waiting");
+                  streamData += data;
+                }
+              });
+            }));
+
+          case 4:
+            return context$2$0.abrupt('return', context$2$0.sent);
+
+          case 5:
+          case 'end':
+            return context$2$0.stop();
+        }
+      }, null, this);
+    }
+  }, {
+    key: 'sendAction',
+    value: function sendAction(action) {
+      var params = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+      var extra;
+      return _regeneratorRuntime.async(function sendAction$(context$2$0) {
+        while (1) switch (context$2$0.prev = context$2$0.next) {
+          case 0:
+            extra = { action: action, params: params };
+            context$2$0.next = 3;
+            return _regeneratorRuntime.awrap(this.sendCommand(COMMAND_TYPES.ACTION, extra));
+
+          case 3:
+            return context$2$0.abrupt('return', context$2$0.sent);
+
+          case 4:
+          case 'end':
+            return context$2$0.stop();
+        }
+      }, null, this);
+    }
+  }, {
+    key: 'shutdown',
+    value: function shutdown() {
+      return _regeneratorRuntime.async(function shutdown$(context$2$0) {
+        while (1) switch (context$2$0.prev = context$2$0.next) {
+          case 0:
+            if (this.uiAutomator) {
+              context$2$0.next = 3;
+              break;
+            }
+
+            log.warn("Cannot shut down Android bootstrap; it has already shut down");
+            return context$2$0.abrupt('return');
+
+          case 3:
+
+            // remove listners so we don't trigger unexpected shutdown
+            this.uiAutomator.removeAllListeners(_appiumUiautomator2['default'].EVENT_CHANGED);
+
+            if (!this.socketClient) {
+              context$2$0.next = 7;
+              break;
+            }
+
+            context$2$0.next = 7;
+            return _regeneratorRuntime.awrap(this.sendCommand(COMMAND_TYPES.SHUTDOWN));
+
+          case 7:
+            context$2$0.next = 9;
+            return _regeneratorRuntime.awrap(this.uiAutomator.shutdown());
+
+          case 9:
+            this.uiAutomator = null;
+
+          case 10:
+          case 'end':
+            return context$2$0.stop();
+        }
+      }, null, this);
+    }
+
+    // this helper function makes unit testing easier.
+  }, {
+    key: 'init',
+    value: function init() {
+      return _regeneratorRuntime.async(function init$(context$2$0) {
+        var _this3 = this;
+
+        while (1) switch (context$2$0.prev = context$2$0.next) {
+          case 0:
+            this.uiAutomator = new _appiumUiautomator2['default'](this.adb);
+
+            // Handle unexpected UiAutomator shutdown
+            this.uiAutomator.on(_appiumUiautomator2['default'].EVENT_CHANGED, function callee$2$0(msg) {
+              return _regeneratorRuntime.async(function callee$2$0$(context$3$0) {
+                while (1) switch (context$3$0.prev = context$3$0.next) {
+                  case 0:
+                    if (msg.state === _appiumUiautomator2['default'].STATE_STOPPED) {
+                      this.uiAutomator = null;
+                      this.onUnexpectedShutdown.cancel(new Error("UiAUtomator shut down unexpectedly"));
+                    }
+
+                  case 1:
+                  case 'end':
+                    return context$3$0.stop();
+                }
+              }, null, _this3);
+            });
+
+          case 2:
+          case 'end':
+            return context$2$0.stop();
+        }
+      }, null, this);
+    }
+  }, {
+    key: 'ignoreUnexpectedShutdown',
+    set: function set(ignore) {
+      log.debug((ignore ? 'Ignoring' : 'Watching for') + ' bootstrap disconnect');
+      this._ignoreUnexpectedShutdown = ignore;
+    },
+    get: function get() {
+      return this._ignoreUnexpectedShutdown;
+    }
+  }]);
+
+  return AndroidBootstrap;
+})();
+
+exports.AndroidBootstrap = AndroidBootstrap;
+exports.COMMAND_TYPES = COMMAND_TYPES;
+exports['default'] = AndroidBootstrap;
+//# sourceMappingURL=data:application/json;charset=utf8;base64,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OztXQUdVOzs7Ozs7QUFDVCxnQkFBSSxDQUFDLFdBQVcsR0FBRyxtQ0FBZ0IsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFDOzs7QUFHN0MsZ0JBQUksQ0FBQyxXQUFXLENBQUMsRUFBRSxDQUFDLCtCQUFZLGFBQWEsRUFBRSxvQkFBTyxHQUFHOzs7O0FBQ3ZELHdCQUFJLEdBQUcsQ0FBQyxLQUFLLEtBQUssK0JBQVksYUFBYSxFQUFFO0FBQzNDLDBCQUFJLENBQUMsV0FBVyxHQUFHLElBQUksQ0FBQztBQUN4QiwwQkFBSSxDQUFDLG9CQUFvQixDQUFDLE1BQU0sQ0FBQyxJQUFJLEtBQUssQ0FBQyxvQ0FBb0MsQ0FBQyxDQUFDLENBQUM7cUJBQ25GOzs7Ozs7O2FBQ0YsQ0FBQyxDQUFDOzs7Ozs7O0tBQ0o7OztTQUU0QixhQUFDLE1BQU0sRUFBRTtBQUNwQyxTQUFHLENBQUMsS0FBSyxFQUFJLE1BQU0sR0FBRyxVQUFVLEdBQUcsY0FBYyxDQUFBLDJCQUF3QixDQUFDO0FBQzFFLFVBQUksQ0FBQyx5QkFBeUIsR0FBRyxNQUFNLENBQUM7S0FDekM7U0FFNEIsZUFBRztBQUM5QixhQUFPLElBQUksQ0FBQyx5QkFBeUIsQ0FBQztLQUN2Qzs7O1NBN0pHLGdCQUFnQjs7O1FBZ0tiLGdCQUFnQixHQUFoQixnQkFBZ0I7UUFBRSxhQUFhLEdBQWIsYUFBYTtxQkFDekIsZ0JBQWdCIiwiZmlsZSI6ImxpYi9ib290c3RyYXAuanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgVWlBdXRvbWF0b3IgZnJvbSAnYXBwaXVtLXVpYXV0b21hdG9yJztcbmltcG9ydCBuZXQgZnJvbSAnbmV0JztcbmltcG9ydCBwYXRoIGZyb20gJ3BhdGgnO1xuaW1wb3J0IF8gZnJvbSAnbG9kYXNoJztcbmltcG9ydCB7IGVycm9yRnJvbUNvZGUgfSBmcm9tICdhcHBpdW0tYmFzZS1kcml2ZXInO1xuaW1wb3J0IEIgZnJvbSAnYmx1ZWJpcmQnO1xuaW1wb3J0IHsgbG9nZ2VyIH0gZnJvbSAnYXBwaXVtLXN1cHBvcnQnO1xuXG5cbmNvbnN0IGxvZyA9IGxvZ2dlci5nZXRMb2dnZXIoJ0FuZHJvaWRCb290c3RyYXAnKTtcbmNvbnN0IENPTU1BTkRfVFlQRVMgPSB7XG4gIEFDVElPTjogJ2FjdGlvbicsXG4gIFNIVVRET1dOOiAnc2h1dGRvd24nXG59O1xuXG5jbGFzcyBBbmRyb2lkQm9vdHN0cmFwIHtcbiAgY29uc3RydWN0b3IgKGFkYiwgc3lzdGVtUG9ydCA9IDQ3MjQsIHdlYlNvY2tldCA9IHVuZGVmaW5lZCkge1xuICAgIHRoaXMuYWRiID0gYWRiO1xuICAgIHRoaXMuc3lzdGVtUG9ydCA9IHN5c3RlbVBvcnQ7XG4gICAgdGhpcy53ZWJTb2NrZXQgPSB3ZWJTb2NrZXQ7XG4gICAgdGhpcy5vblVuZXhwZWN0ZWRTaHV0ZG93biA9IG5ldyBCKCgpID0+IHt9KS5jYW5jZWxsYWJsZSgpO1xuICAgIHRoaXMuaWdub3JlVW5leHBlY3RlZFNodXRkb3duID0gZmFsc2U7XG4gIH1cblxuICBhc3luYyBzdGFydCAoYXBwUGFja2FnZSwgZGlzYWJsZUFuZHJvaWRXYXRjaGVycyA9IGZhbHNlLCBhY2NlcHRTc2xDZXJ0cyA9IGZhbHNlKSB7XG4gICAgdHJ5IHtcbiAgICAgIGNvbnN0IHJvb3REaXIgPSBwYXRoLnJlc29sdmUoX19kaXJuYW1lLCAnLi4nLCAnLi4nKTtcbiAgICAgIGNvbnN0IHN0YXJ0RGV0ZWN0b3IgPSAocykgPT4geyByZXR1cm4gL0FwcGl1bSBTb2NrZXQgU2VydmVyIFJlYWR5Ly50ZXN0KHMpOyB9O1xuICAgICAgY29uc3QgYm9vdHN0cmFwSmFyID0gcGF0aC5yZXNvbHZlKHJvb3REaXIsICdib290c3RyYXAnLCAnYmluJywgJ0FwcGl1bUJvb3RzdHJhcC5qYXInKTtcblxuICAgICAgYXdhaXQgdGhpcy5pbml0KCk7XG4gICAgICB0aGlzLmFkYi5mb3J3YXJkUG9ydCh0aGlzLnN5c3RlbVBvcnQsIDQ3MjQpO1xuICAgICAgdGhpcy5wcm9jZXNzID0gYXdhaXQgdGhpcy51aUF1dG9tYXRvci5zdGFydChcbiAgICAgICAgICAgICAgICAgICAgICAgYm9vdHN0cmFwSmFyLCAnaW8uYXBwaXVtLmFuZHJvaWQuYm9vdHN0cmFwLkJvb3RzdHJhcCcsXG4gICAgICAgICAgICAgICAgICAgICAgIHN0YXJ0RGV0ZWN0b3IsICctZScsICdwa2cnLCBhcHBQYWNrYWdlLFxuICAgICAgICAgICAgICAgICAgICAgICAnLWUnLCAnZGlzYWJsZUFuZHJvaWRXYXRjaGVycycsIGRpc2FibGVBbmRyb2lkV2F0Y2hlcnMsXG4gICAgICAgICAgICAgICAgICAgICAgICctZScsICdhY2NlcHRTc2xDZXJ0cycsIGFjY2VwdFNzbENlcnRzKTtcblxuICAgICAgLy8gcHJvY2VzcyB0aGUgb3V0cHV0XG4gICAgICB0aGlzLnByb2Nlc3Mub24oJ291dHB1dCcsIChzdGRvdXQsIHN0ZGVycikgPT4ge1xuICAgICAgICBjb25zdCBhbGVydFJlID0gL0VtaXR0aW5nIHN5c3RlbSBhbGVydCBtZXNzYWdlLztcbiAgICAgICAgaWYgKGFsZXJ0UmUudGVzdChzdGRvdXQpKSB7XG4gICAgICAgICAgbG9nLmRlYnVnKFwiRW1pdHRpbmcgYWxlcnQgbWVzc2FnZS4uLlwiKTtcbiAgICAgICAgICBpZiAodGhpcy53ZWJTb2NrZXQpIHtcbiAgICAgICAgICAgIHRoaXMud2ViU29ja2V0LnNvY2tldHMuZW1pdCgnYWxlcnQnLCB7bWVzc2FnZTogc3Rkb3V0fSk7XG4gICAgICAgICAgfVxuICAgICAgICB9XG5cbiAgICAgICAgLy8gdGhlIGJvb3RzdHJhcCBsb2dnZXIgd3JhcHMgaXRzIG93biBsb2cgbGluZXMgd2l0aFxuICAgICAgICAvLyBbQVBQSVVNLVVJQVVUT10gLi4uIFtBUFBJVU0tVUlBVVRPXVxuICAgICAgICAvLyBhbmQgbGVhdmVzIGFjdHVhbCBVaUF1dG9tYXRvciBsb2dzIGFzIHRoZXkgYXJlXG4gICAgICAgIGxldCBzdGRvdXRMaW5lcyA9IChzdGRvdXQgfHwgXCJcIikuc3BsaXQoXCJcXG5cIik7XG4gICAgICAgIGNvbnN0IHVpYXV0b0xvZyA9IC9cXFtBUFBJVU0tVUlBVVRPXFxdKC4rKVxcW1xcL0FQUElVTS1VSUFVVE9cXF0vO1xuICAgICAgICBmb3IgKGxldCBsaW5lIG9mIHN0ZG91dExpbmVzKSB7XG4gICAgICAgICAgaWYgKGxpbmUudHJpbSgpKSB7XG4gICAgICAgICAgICBpZiAodWlhdXRvTG9nLnRlc3QobGluZSkpIHtcbiAgICAgICAgICAgICAgbGV0IGlubmVyTGluZSA9IHVpYXV0b0xvZy5leGVjKGxpbmUpWzFdLnRyaW0oKTtcbiAgICAgICAgICAgICAgbGV0IGxvZ01ldGhvZCA9IGxvZy5pbmZvLmJpbmQobG9nKTtcbiAgICAgICAgICAgICAgLy8gaWYgdGhlIGJvb3RzdHJhcCBsb2cgY29uc2lkZXJzIHNvbWV0aGluZyBkZWJ1ZywgbG9nIHRoYXQgYXNcbiAgICAgICAgICAgICAgLy8gZGVidWcgYW5kIG5vdCBpbmZvXG4gICAgICAgICAgICAgIGlmICgvXFxbZGVidWdcXF0vLnRlc3QoaW5uZXJMaW5lKSkge1xuICAgICAgICAgICAgICAgIGxvZ01ldGhvZCA9IGxvZy5kZWJ1Zy5iaW5kKGxvZyk7XG4gICAgICAgICAgICAgIH1cbiAgICAgICAgICAgICAgbG9nTWV0aG9kKGBbQk9PVFNUUkFQIExPR10gJHtpbm5lckxpbmV9YCk7XG4gICAgICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgICBsb2cuZGVidWcoYFtVSUFVVE8gU1RET1VUXSAke2xpbmV9YCk7XG4gICAgICAgICAgICB9XG4gICAgICAgICAgfVxuICAgICAgICB9XG5cbiAgICAgICAgbGV0IHN0ZGVyckxpbmVzID0gKHN0ZGVyciB8fCBcIlwiKS5zcGxpdChcIlxcblwiKTtcbiAgICAgICAgZm9yIChsZXQgbGluZSBvZiBzdGRlcnJMaW5lcykge1xuICAgICAgICAgIGlmIChsaW5lLnRyaW0oKSkge1xuICAgICAgICAgICAgbG9nLmRlYnVnKGBbVUlBVVRPIFNUREVSUl0gJHtsaW5lfWApO1xuICAgICAgICAgIH1cbiAgICAgICAgfVxuICAgICAgfSk7XG5cbiAgICAgIC8vIG9ubHkgcmV0dXJuIHdoZW4gdGhlIHNvY2tldCBjbGllbnQgaGFzIGNvbm5lY3RlZFxuICAgICAgcmV0dXJuIGF3YWl0IG5ldyBQcm9taXNlICgocmVzb2x2ZSwgcmVqZWN0KSA9PiB7XG4gICAgICAgIHRyeSB7XG4gICAgICAgICAgdGhpcy5zb2NrZXRDbGllbnQgPSBuZXQuY29ubmVjdCh0aGlzLnN5c3RlbVBvcnQpO1xuICAgICAgICAgIC8vIFdpbmRvd3M6IHRoZSBzb2NrZXQgZXJyb3JzIG91dCB3aGVuIEFEQiByZXN0YXJ0cy4gTGV0J3MgY2F0Y2ggaXQgdG8gYXZvaWQgY3Jhc2hpbmcuXG4gICAgICAgICAgdGhpcy5zb2NrZXRDbGllbnQub24oJ2Vycm9yJywgKGVycikgPT4ge1xuICAgICAgICAgICAgaWYgKCF0aGlzLmlnbm9yZVVuZXhwZWN0ZWRTaHV0ZG93bikge1xuICAgICAgICAgICAgICB0aHJvdyBuZXcgRXJyb3IoYEFuZHJvaWQgYm9vdHN0cmFwIHNvY2tldCBjcmFzaGVkOiAke2Vycn1gKTtcbiAgICAgICAgICAgIH1cbiAgICAgICAgICB9KTtcbiAgICAgICAgICB0aGlzLnNvY2tldENsaWVudC5vbmNlKCdjb25uZWN0JywgKCkgPT4ge1xuICAgICAgICAgICAgbG9nLmluZm8oXCJBbmRyb2lkIGJvb3RzdHJhcCBzb2NrZXQgaXMgbm93IGNvbm5lY3RlZFwiKTtcbiAgICAgICAgICAgIHJlc29sdmUoKTtcbiAgICAgICAgICB9KTtcbiAgICAgICAgfSBjYXRjaCAoZXJyKSB7XG4gICAgICAgICAgcmVqZWN0KGVycik7XG4gICAgICAgIH1cbiAgICAgIH0pO1xuICAgIH0gY2F0Y2ggKGVycikge1xuICAgICAgbG9nLmVycm9yQW5kVGhyb3coYEVycm9yIG9jY3VyZWQgd2hpbGUgc3RhcnRpbmcgQW5kcm9pZEJvb3RzdHJhcC4gT3JpZ2luYWwgZXJyb3I6ICR7ZXJyfWApO1xuICAgIH1cbiAgfVxuXG4gIGFzeW5jIHNlbmRDb21tYW5kICh0eXBlLCBleHRyYSA9IHt9KSB7XG4gICAgaWYgKCF0aGlzLnNvY2tldENsaWVudCkge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdTb2NrZXQgY29ubmVjdGlvbiBjbG9zZWQgdW5leHBlY3RlZGx5Jyk7XG4gICAgfVxuXG4gICAgcmV0dXJuIGF3YWl0IG5ldyBQcm9taXNlICgocmVzb2x2ZSwgcmVqZWN0KSA9PiB7XG4gICAgICBsZXQgY21kID0gT2JqZWN0LmFzc2lnbih7Y21kOiB0eXBlfSwgZXh0cmEpO1xuICAgICAgbGV0IGNtZEpzb24gPSBgJHtKU09OLnN0cmluZ2lmeShjbWQpfSBcXG5gO1xuICAgICAgbG9nLmRlYnVnKGBTZW5kaW5nIGNvbW1hbmQgdG8gYW5kcm9pZDogJHtfLnRydW5jKGNtZEpzb24sIDEwMDApLnRyaW0oKX1gKTtcbiAgICAgIHRoaXMuc29ja2V0Q2xpZW50LndyaXRlKGNtZEpzb24pO1xuICAgICAgdGhpcy5zb2NrZXRDbGllbnQuc2V0RW5jb2RpbmcoJ3V0ZjgnKTtcbiAgICAgIGxldCBzdHJlYW1EYXRhID0gJyc7XG4gICAgICB0aGlzLnNvY2tldENsaWVudC5vbignZGF0YScsIChkYXRhKSA9PiB7XG4gICAgICAgIGxvZy5kZWJ1ZyhcIlJlY2VpdmVkIGNvbW1hbmQgcmVzdWx0IGZyb20gYm9vdHN0cmFwXCIpO1xuICAgICAgICB0cnkge1xuICAgICAgICAgIHN0cmVhbURhdGEgPSBKU09OLnBhcnNlKHN0cmVhbURhdGEgKyBkYXRhKTtcbiAgICAgICAgICAvLyB3ZSBzdWNjZXNzZnVsbHkgcGFyc2VkIEpTT04gc28gd2UndmUgZ290IGFsbCB0aGUgZGF0YSxcbiAgICAgICAgICAvLyByZW1vdmUgdGhlIHNvY2tldCBsaXN0ZW5lciBhbmQgZXZhbHVhdGVcbiAgICAgICAgICB0aGlzLnNvY2tldENsaWVudC5yZW1vdmVBbGxMaXN0ZW5lcnMoJ2RhdGEnKTtcbiAgICAgICAgICBpZiAoc3RyZWFtRGF0YS5zdGF0dXMgPT09IDApIHtcbiAgICAgICAgICAgIHJlc29sdmUoc3RyZWFtRGF0YS52YWx1ZSk7XG4gICAgICAgICAgfVxuICAgICAgICAgIHJlamVjdChlcnJvckZyb21Db2RlKHN0cmVhbURhdGEuc3RhdHVzKSk7XG4gICAgICAgIH0gY2F0Y2ggKGlnbikge1xuICAgICAgICAgIGxvZy5kZWJ1ZyhcIlN0cmVhbSBzdGlsbCBub3QgY29tcGxldGUsIHdhaXRpbmdcIik7XG4gICAgICAgICAgc3RyZWFtRGF0YSArPSBkYXRhO1xuICAgICAgICB9XG4gICAgICB9KTtcbiAgICB9KTtcbiAgfVxuXG4gIGFzeW5jIHNlbmRBY3Rpb24gKGFjdGlvbiwgcGFyYW1zID0ge30pIHtcbiAgICBsZXQgZXh0cmEgPSB7YWN0aW9uLCBwYXJhbXN9O1xuICAgIHJldHVybiBhd2FpdCB0aGlzLnNlbmRDb21tYW5kKENPTU1BTkRfVFlQRVMuQUNUSU9OLCBleHRyYSk7XG4gIH1cblxuICBhc3luYyBzaHV0ZG93biAoKSB7XG4gICAgaWYgKCF0aGlzLnVpQXV0b21hdG9yKSB7XG4gICAgICBsb2cud2FybihcIkNhbm5vdCBzaHV0IGRvd24gQW5kcm9pZCBib290c3RyYXA7IGl0IGhhcyBhbHJlYWR5IHNodXQgZG93blwiKTtcbiAgICAgIHJldHVybjtcbiAgICB9XG5cbiAgICAvLyByZW1vdmUgbGlzdG5lcnMgc28gd2UgZG9uJ3QgdHJpZ2dlciB1bmV4cGVjdGVkIHNodXRkb3duXG4gICAgdGhpcy51aUF1dG9tYXRvci5yZW1vdmVBbGxMaXN0ZW5lcnMoVWlBdXRvbWF0b3IuRVZFTlRfQ0hBTkdFRCk7XG4gICAgaWYgKHRoaXMuc29ja2V0Q2xpZW50KSB7XG4gICAgICBhd2FpdCB0aGlzLnNlbmRDb21tYW5kKENPTU1BTkRfVFlQRVMuU0hVVERPV04pO1xuICAgIH1cbiAgICBhd2FpdCB0aGlzLnVpQXV0b21hdG9yLnNodXRkb3duKCk7XG4gICAgdGhpcy51aUF1dG9tYXRvciA9IG51bGw7XG4gIH1cblxuICAvLyB0aGlzIGhlbHBlciBmdW5jdGlvbiBtYWtlcyB1bml0IHRlc3RpbmcgZWFzaWVyLlxuICBhc3luYyBpbml0ICgpIHtcbiAgICB0aGlzLnVpQXV0b21hdG9yID0gbmV3IFVpQXV0b21hdG9yKHRoaXMuYWRiKTtcbiAgICBcbiAgICAvLyBIYW5kbGUgdW5leHBlY3RlZCBVaUF1dG9tYXRvciBzaHV0ZG93blxuICAgIHRoaXMudWlBdXRvbWF0b3Iub24oVWlBdXRvbWF0b3IuRVZFTlRfQ0hBTkdFRCwgYXN5bmMgKG1zZykgPT4ge1xuICAgICAgaWYgKG1zZy5zdGF0ZSA9PT0gVWlBdXRvbWF0b3IuU1RBVEVfU1RPUFBFRCkge1xuICAgICAgICB0aGlzLnVpQXV0b21hdG9yID0gbnVsbDtcbiAgICAgICAgdGhpcy5vblVuZXhwZWN0ZWRTaHV0ZG93bi5jYW5jZWwobmV3IEVycm9yKFwiVWlBVXRvbWF0b3Igc2h1dCBkb3duIHVuZXhwZWN0ZWRseVwiKSk7XG4gICAgICB9XG4gICAgfSk7XG4gIH1cblxuICBzZXQgaWdub3JlVW5leHBlY3RlZFNodXRkb3duIChpZ25vcmUpIHtcbiAgICBsb2cuZGVidWcoYCR7aWdub3JlID8gJ0lnbm9yaW5nJyA6ICdXYXRjaGluZyBmb3InfSBib290c3RyYXAgZGlzY29ubmVjdGApO1xuICAgIHRoaXMuX2lnbm9yZVVuZXhwZWN0ZWRTaHV0ZG93biA9IGlnbm9yZTtcbiAgfVxuXG4gIGdldCBpZ25vcmVVbmV4cGVjdGVkU2h1dGRvd24gKCkge1xuICAgIHJldHVybiB0aGlzLl9pZ25vcmVVbmV4cGVjdGVkU2h1dGRvd247XG4gIH1cbn1cblxuZXhwb3J0IHsgQW5kcm9pZEJvb3RzdHJhcCwgQ09NTUFORF9UWVBFUyB9O1xuZXhwb3J0IGRlZmF1bHQgQW5kcm9pZEJvb3RzdHJhcDtcbiJdLCJzb3VyY2VSb290IjoiLi4vLi4ifQ==

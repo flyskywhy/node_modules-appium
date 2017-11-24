@@ -1,0 +1,109 @@
+// transpile :mocha
+
+'use strict';
+
+var _regeneratorRuntime = require('babel-runtime/regenerator')['default'];
+
+var _interopRequireDefault = require('babel-runtime/helpers/interop-require-default')['default'];
+
+var _interopRequireWildcard = require('babel-runtime/helpers/interop-require-wildcard')['default'];
+
+var _chai = require('chai');
+
+var _chai2 = _interopRequireDefault(_chai);
+
+var _chaiAsPromised = require('chai-as-promised');
+
+var _chaiAsPromised2 = _interopRequireDefault(_chaiAsPromised);
+
+var _ = require('../..');
+
+var _2 = _interopRequireDefault(_);
+
+var _path = require('path');
+
+var _path2 = _interopRequireDefault(_path);
+
+var _appiumAdb = require('appium-adb');
+
+var _appiumAdb2 = _interopRequireDefault(_appiumAdb);
+
+var _appiumTestSupport = require('appium-test-support');
+
+var _teen_process = require('teen_process');
+
+var teen_process = _interopRequireWildcard(_teen_process);
+
+var _events = require('events');
+
+var _events2 = _interopRequireDefault(_events);
+
+_chai2['default'].should();
+_chai2['default'].use(_chaiAsPromised2['default']);
+
+describe('UiAutomator', function () {
+  var _this = this;
+
+  var uiAutomator = undefined,
+      adb = new _appiumAdb2['default']();
+  var rootDir = _path2['default'].resolve(__dirname, process.env.NO_PRECOMPILE ? '../..' : '../../..');
+  var bootstrapJar = _path2['default'].resolve(rootDir, 'test', 'fixtures', 'AppiumBootstrap.jar'),
+      bootstrapClassName = 'io.appium.android.bootstrap.Bootstrap';
+  before(function () {
+    uiAutomator = new _2['default'](adb);
+  });
+
+  it('should throw an error if adb is not passed', function () {
+    (function () {
+      new _2['default']();
+    }).should['throw'](/adb is required/);
+  });
+  it("parseJarNameFromPath should parse jarName from path and windows path", function () {
+    uiAutomator.parseJarNameFromPath(bootstrapJar).should.equal('AppiumBootstrap.jar');
+    var windowsJarName = 'C:\\\\appium\\bar.jar';
+    uiAutomator.parseJarNameFromPath(windowsJarName).should.equal('bar.jar');
+  });
+  it("parseJarNameFromPath should throw error for invalid path", function callee$1$0() {
+    return _regeneratorRuntime.async(function callee$1$0$(context$2$0) {
+      while (1) switch (context$2$0.prev = context$2$0.next) {
+        case 0:
+          (function () {
+            uiAutomator.parseJarNameFromPath('foo/bar');
+          }).should['throw'](/Unable to parse/);
+
+        case 1:
+        case 'end':
+          return context$2$0.stop();
+      }
+    }, null, _this);
+  });
+  describe("start", (0, _appiumTestSupport.withSandbox)({ mocks: { adb: adb, teen_process: teen_process } }, function (S) {
+    it("should return a subProcess", function callee$2$0() {
+      var conn, args;
+      return _regeneratorRuntime.async(function callee$2$0$(context$3$0) {
+        while (1) switch (context$3$0.prev = context$3$0.next) {
+          case 0:
+            conn = new _events2['default'].EventEmitter();
+
+            conn.start = function () {};
+            args = ["-P", 5037, "shell", "uiautomator", "runtest", 'AppiumBootstrap.jar', "-c", bootstrapClassName];
+
+            S.mocks.adb.expects('push').once().withExactArgs(bootstrapJar, "/data/local/tmp/").returns('');
+            S.mocks.adb.expects('getAdbPath').once().returns('adbPath');
+            S.mocks.teen_process.expects("SubProcess").once().withExactArgs('adbPath', args).returns(conn);
+            context$3$0.next = 8;
+            return _regeneratorRuntime.awrap(uiAutomator.start(bootstrapJar, bootstrapClassName));
+
+          case 8:
+            uiAutomator.state.should.equal('online');
+            S.verify();
+
+          case 10:
+          case 'end':
+            return context$3$0.stop();
+        }
+      }, null, this);
+    });
+  }));
+});
+//# sourceMappingURL=data:application/json;charset=utf8;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbInRlc3QvdW5pdC91aWF1dG9tYXRvci1zcGVjcy5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Ozs7Ozs7O29CQUVpQixNQUFNOzs7OzhCQUNJLGtCQUFrQjs7OztnQkFDckIsT0FBTzs7OztvQkFDZCxNQUFNOzs7O3lCQUNQLFlBQVk7Ozs7aUNBQ0EscUJBQXFCOzs0QkFDbkIsY0FBYzs7SUFBaEMsWUFBWTs7c0JBQ0wsUUFBUTs7OztBQUczQixrQkFBSyxNQUFNLEVBQUUsQ0FBQztBQUNkLGtCQUFLLEdBQUcsNkJBQWdCLENBQUM7O0FBRXpCLFFBQVEsQ0FBQyxhQUFhLEVBQUUsWUFBWTs7O0FBQ2xDLE1BQUksV0FBVyxZQUFBO01BQUUsR0FBRyxHQUFFLDRCQUFTLENBQUM7QUFDaEMsTUFBSSxPQUFPLEdBQUcsa0JBQUssT0FBTyxDQUFDLFNBQVMsRUFDVCxPQUFPLENBQUMsR0FBRyxDQUFDLGFBQWEsR0FBRyxPQUFPLEdBQUcsVUFBVSxDQUFDLENBQUM7QUFDN0UsTUFBTSxZQUFZLEdBQUcsa0JBQUssT0FBTyxDQUFDLE9BQU8sRUFBRSxNQUFNLEVBQUUsVUFBVSxFQUFFLHFCQUFxQixDQUFDO01BQy9FLGtCQUFrQixHQUFHLHVDQUF1QyxDQUFDO0FBQ25FLFFBQU0sQ0FBQyxZQUFNO0FBQ1gsZUFBVyxHQUFHLGtCQUFnQixHQUFHLENBQUMsQ0FBQztHQUNwQyxDQUFDLENBQUM7O0FBRUgsSUFBRSxDQUFDLDRDQUE0QyxFQUFFLFlBQU07QUFDckQsS0FBQyxZQUFNO0FBQUUseUJBQWlCLENBQUM7S0FBRSxDQUFBLENBQUUsTUFBTSxTQUFNLENBQUMsaUJBQWlCLENBQUMsQ0FBQztHQUNoRSxDQUFDLENBQUM7QUFDSCxJQUFFLENBQUMsc0VBQXNFLEVBQUUsWUFBTTtBQUMvRSxlQUFXLENBQUMsb0JBQW9CLENBQUMsWUFBWSxDQUFDLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQyxxQkFBcUIsQ0FBQyxDQUFDO0FBQ25GLFFBQUksY0FBYywwQkFBMEIsQ0FBQztBQUM3QyxlQUFXLENBQUMsb0JBQW9CLENBQUMsY0FBYyxDQUFDLENBQUMsTUFBTSxDQUFDLEtBQUssQ0FBQyxTQUFTLENBQUMsQ0FBQztHQUMxRSxDQUFDLENBQUM7QUFDSCxJQUFFLENBQUMsMERBQTBELEVBQUU7Ozs7QUFDN0QsV0FBQyxZQUFNO0FBQUUsdUJBQVcsQ0FBQyxvQkFBb0IsQ0FBQyxTQUFTLENBQUMsQ0FBQztXQUFFLENBQUEsQ0FBRSxNQUFNLFNBQU0sQ0FBQyxpQkFBaUIsQ0FBQyxDQUFDOzs7Ozs7O0dBQzFGLENBQUMsQ0FBQztBQUNILFVBQVEsQ0FBQyxPQUFPLEVBQUUsb0NBQVksRUFBQyxLQUFLLEVBQUUsRUFBQyxHQUFHLEVBQUgsR0FBRyxFQUFFLFlBQVksRUFBWixZQUFZLEVBQUMsRUFBQyxFQUFFLFVBQUMsQ0FBQyxFQUFLO0FBQ2pFLE1BQUUsQ0FBQyw0QkFBNEIsRUFBRTtVQUMzQixJQUFJLEVBRUosSUFBSTs7OztBQUZKLGdCQUFJLEdBQUcsSUFBSSxvQkFBTyxZQUFZLEVBQUU7O0FBQ3BDLGdCQUFJLENBQUMsS0FBSyxHQUFHLFlBQU0sRUFBRyxDQUFDO0FBQ25CLGdCQUFJLEdBQUcsQ0FBQyxJQUFJLEVBQUUsSUFBSSxFQUFFLE9BQU8sRUFBRSxhQUFhLEVBQUUsU0FBUyxFQUFFLHFCQUFxQixFQUNwRSxJQUFJLEVBQUUsa0JBQWtCLENBQUM7O0FBQ3JDLGFBQUMsQ0FBQyxLQUFLLENBQUMsR0FBRyxDQUFDLE9BQU8sQ0FBQyxNQUFNLENBQUMsQ0FBQyxJQUFJLEVBQUUsQ0FDL0IsYUFBYSxDQUFDLFlBQVksRUFBRSxrQkFBa0IsQ0FBQyxDQUMvQyxPQUFPLENBQUMsRUFBRSxDQUFDLENBQUM7QUFDZixhQUFDLENBQUMsS0FBSyxDQUFDLEdBQUcsQ0FBQyxPQUFPLENBQUMsWUFBWSxDQUFDLENBQUMsSUFBSSxFQUFFLENBQ3JDLE9BQU8sQ0FBQyxTQUFTLENBQUMsQ0FBQztBQUN0QixhQUFDLENBQUMsS0FBSyxDQUFDLFlBQVksQ0FBQyxPQUFPLENBQUMsWUFBWSxDQUFDLENBQ3ZDLElBQUksRUFBRSxDQUFDLGFBQWEsQ0FBQyxTQUFTLEVBQUUsSUFBSSxDQUFDLENBQ3JDLE9BQU8sQ0FBQyxJQUFJLENBQUMsQ0FBQzs7NkNBQ1gsV0FBVyxDQUFDLEtBQUssQ0FBQyxZQUFZLEVBQUUsa0JBQWtCLENBQUM7OztBQUN6RCx1QkFBVyxDQUFDLEtBQUssQ0FBQyxNQUFNLENBQUMsS0FBSyxDQUFDLFFBQVEsQ0FBQyxDQUFDO0FBQ3pDLGFBQUMsQ0FBQyxNQUFNLEVBQUUsQ0FBQzs7Ozs7OztLQUNaLENBQUMsQ0FBQztHQUNKLENBQUMsQ0FBQyxDQUFDO0NBQ0wsQ0FBQyxDQUFDIiwiZmlsZSI6InRlc3QvdW5pdC91aWF1dG9tYXRvci1zcGVjcy5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8vIHRyYW5zcGlsZSA6bW9jaGFcblxuaW1wb3J0IGNoYWkgZnJvbSAnY2hhaSc7XG5pbXBvcnQgY2hhaUFzUHJvbWlzZWQgZnJvbSAnY2hhaS1hcy1wcm9taXNlZCc7XG5pbXBvcnQgVWlBdXRvbWF0b3IgZnJvbSAnLi4vLi4nO1xuaW1wb3J0IHBhdGggZnJvbSAncGF0aCc7XG5pbXBvcnQgQURCIGZyb20gJ2FwcGl1bS1hZGInO1xuaW1wb3J0IHsgd2l0aFNhbmRib3ggfSBmcm9tICdhcHBpdW0tdGVzdC1zdXBwb3J0JztcbmltcG9ydCAqIGFzIHRlZW5fcHJvY2VzcyBmcm9tICd0ZWVuX3Byb2Nlc3MnO1xuaW1wb3J0IGV2ZW50cyBmcm9tICdldmVudHMnO1xuXG5cbmNoYWkuc2hvdWxkKCk7XG5jaGFpLnVzZShjaGFpQXNQcm9taXNlZCk7XG5cbmRlc2NyaWJlKCdVaUF1dG9tYXRvcicsIGZ1bmN0aW9uICgpIHtcbiAgbGV0IHVpQXV0b21hdG9yLCBhZGI9IG5ldyBBREIoKTtcbiAgbGV0IHJvb3REaXIgPSBwYXRoLnJlc29sdmUoX19kaXJuYW1lLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwcm9jZXNzLmVudi5OT19QUkVDT01QSUxFID8gJy4uLy4uJyA6ICcuLi8uLi8uLicpO1xuICBjb25zdCBib290c3RyYXBKYXIgPSBwYXRoLnJlc29sdmUocm9vdERpciwgJ3Rlc3QnLCAnZml4dHVyZXMnLCAnQXBwaXVtQm9vdHN0cmFwLmphcicpLFxuICAgICAgICBib290c3RyYXBDbGFzc05hbWUgPSAnaW8uYXBwaXVtLmFuZHJvaWQuYm9vdHN0cmFwLkJvb3RzdHJhcCc7XG4gIGJlZm9yZSgoKSA9PiB7XG4gICAgdWlBdXRvbWF0b3IgPSBuZXcgVWlBdXRvbWF0b3IoYWRiKTtcbiAgfSk7XG5cbiAgaXQoJ3Nob3VsZCB0aHJvdyBhbiBlcnJvciBpZiBhZGIgaXMgbm90IHBhc3NlZCcsICgpID0+IHtcbiAgICAoKCkgPT4geyBuZXcgVWlBdXRvbWF0b3IoKTsgfSkuc2hvdWxkLnRocm93KC9hZGIgaXMgcmVxdWlyZWQvKTtcbiAgfSk7XG4gIGl0KFwicGFyc2VKYXJOYW1lRnJvbVBhdGggc2hvdWxkIHBhcnNlIGphck5hbWUgZnJvbSBwYXRoIGFuZCB3aW5kb3dzIHBhdGhcIiwgKCkgPT4ge1xuICAgIHVpQXV0b21hdG9yLnBhcnNlSmFyTmFtZUZyb21QYXRoKGJvb3RzdHJhcEphcikuc2hvdWxkLmVxdWFsKCdBcHBpdW1Cb290c3RyYXAuamFyJyk7XG4gICAgbGV0IHdpbmRvd3NKYXJOYW1lID0gYEM6XFxcXFxcXFxhcHBpdW1cXFxcYmFyLmphcmA7XG4gICAgdWlBdXRvbWF0b3IucGFyc2VKYXJOYW1lRnJvbVBhdGgod2luZG93c0phck5hbWUpLnNob3VsZC5lcXVhbCgnYmFyLmphcicpO1xuICB9KTtcbiAgaXQoXCJwYXJzZUphck5hbWVGcm9tUGF0aCBzaG91bGQgdGhyb3cgZXJyb3IgZm9yIGludmFsaWQgcGF0aFwiLCBhc3luYyAoKSA9PiB7XG4gICAgKCgpID0+IHsgdWlBdXRvbWF0b3IucGFyc2VKYXJOYW1lRnJvbVBhdGgoJ2Zvby9iYXInKTsgfSkuc2hvdWxkLnRocm93KC9VbmFibGUgdG8gcGFyc2UvKTtcbiAgfSk7XG4gIGRlc2NyaWJlKFwic3RhcnRcIiwgd2l0aFNhbmRib3goe21vY2tzOiB7YWRiLCB0ZWVuX3Byb2Nlc3N9fSwgKFMpID0+IHtcbiAgICBpdChcInNob3VsZCByZXR1cm4gYSBzdWJQcm9jZXNzXCIsIGFzeW5jIGZ1bmN0aW9uICgpIHtcbiAgICAgIGxldCBjb25uID0gbmV3IGV2ZW50cy5FdmVudEVtaXR0ZXIoKTtcbiAgICAgIGNvbm4uc3RhcnQgPSAoKSA9PiB7IH07XG4gICAgICBsZXQgYXJncyA9IFtcIi1QXCIsIDUwMzcsIFwic2hlbGxcIiwgXCJ1aWF1dG9tYXRvclwiLCBcInJ1bnRlc3RcIiwgJ0FwcGl1bUJvb3RzdHJhcC5qYXInLFxuICAgICAgICAgICAgICAgICAgXCItY1wiLCBib290c3RyYXBDbGFzc05hbWVdO1xuICAgICAgUy5tb2Nrcy5hZGIuZXhwZWN0cygncHVzaCcpLm9uY2UoKVxuICAgICAgICAud2l0aEV4YWN0QXJncyhib290c3RyYXBKYXIsIFwiL2RhdGEvbG9jYWwvdG1wL1wiKVxuICAgICAgICAucmV0dXJucygnJyk7XG4gICAgICBTLm1vY2tzLmFkYi5leHBlY3RzKCdnZXRBZGJQYXRoJykub25jZSgpXG4gICAgICAgIC5yZXR1cm5zKCdhZGJQYXRoJyk7XG4gICAgICBTLm1vY2tzLnRlZW5fcHJvY2Vzcy5leHBlY3RzKFwiU3ViUHJvY2Vzc1wiKVxuICAgICAgICAub25jZSgpLndpdGhFeGFjdEFyZ3MoJ2FkYlBhdGgnLCBhcmdzKVxuICAgICAgICAucmV0dXJucyhjb25uKTtcbiAgICAgIGF3YWl0IHVpQXV0b21hdG9yLnN0YXJ0KGJvb3RzdHJhcEphciwgYm9vdHN0cmFwQ2xhc3NOYW1lKTtcbiAgICAgIHVpQXV0b21hdG9yLnN0YXRlLnNob3VsZC5lcXVhbCgnb25saW5lJyk7XG4gICAgICBTLnZlcmlmeSgpO1xuICAgIH0pO1xuICB9KSk7XG59KTtcbiJdLCJzb3VyY2VSb290IjoiLi4vLi4vLi4ifQ==
