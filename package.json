@@ -3010,7 +3010,7 @@
     "babel-eslint": "7.x",
     "chai": "3.x",
     "chai-as-promised": "5.x",
-    "eslint": "3.x",
+    "eslint": "6.x",
     "eslint-config-appium": "2.x",
     "eslint-plugin-babel": "3.x",
     "eslint-plugin-import": "2.x",
